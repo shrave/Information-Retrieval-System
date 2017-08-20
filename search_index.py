@@ -5,9 +5,15 @@ from nltk.stem import PorterStemmer
 from nltk.tokenize import sent_tokenize, word_tokenize
 import nltk
 import re
+import html2text
 from operator import itemgetter
 import unicodedata
+import pickle
+
 index={}
+word_frequency = {}
+stopwords = ['a', 'about', 'above', 'above', 'across', 'after', 'afterwards', 'again', 'against', 'all', 'almost', 'alone', 'along', 'already', 'also', 'although', 'always', 'am', 'among', 'amongst','amount', 'an', 'and', 'another', 'any', 'anyhow', 'anyone', 'anything', 'anyway', 'anywhere', 'are', 'around', 'as', 'at', 'back', 'be', 'became', 'because', 'become', 'becomes', 'becoming', 'been', 'before', 'beforehand', 'behind', 'being', 'below', 'beside', 'besides', 'between', 'beyond', 'bill', 'both', 'bottom', 'but', 'by', 'call', 'can', 'cannot', "can't", 'co', 'con', 'could', "couldn't", 'cry', 'de', 'describe', 'detail', 'do', 'done', 'down', 'due', 'during', 'each', 'eg.', 'eight', 'either', 'eleven', 'else', 'elsewhere', 'empty', 'enough', 'etc', 'even', 'ever', 'every', 'everyone', 'everything', 'everywhere', 'except', 'few', 'fifteen', 'fify', 'fill', 'find', 'fire', 'first', 'five', 'for', 'former', 'formerly', 'forty', 'found', 'four', 'from', 'front', 'full', 'further', 'get', 'give', 'go', 'had', 'has', "hasn't", 'have', 'he', 'hence', 'her', 'here', 'hereafter', 'hereby', 'herein', 'hereupon', 'hers', 'herself', 'him', 'himself', 'his', 'how', 'however', 'hundred', 'i.e.', 'if', 'in', 'inc', 'indeed', 'interest', 'into', 'is', 'it', 'its', 'itself', 'keep', 'last', 'latter', 'latterly', 'least', 'less', 'ltd', 'made', 'many', 'may', 'me', 'meanwhile', 'might', 'mill', 'mine', 'more', 'moreover', 'most', 'mostly', 'move', 'much', 'must', 'my', 'myself', 'name', 'namely', 'neither', 'never', 'nevertheless', 'next', 'nine', 'no', 'nobody', 'none', 'noone', 'nor', 'not', 'nothing', 'now', 'nowhere', 'of', 'off', 'often', 'on', 'once', 'one', 'only', 'onto', 'or', 'other', 'others', 'otherwise', 'our', 'ours', 'ourselves', 'out', 'over', 'own', 'part', 'per', 'perhaps', 'please', 'put', 'rather', 're', 'same', 'see', 'seem', 'seemed', 'seeming', 'seems', 'serious', 'several', 'she', 'should', 'show', 'side', 'since', 'sincere', 'six', 'sixty', 'so', 'some', 'somehow', 'someone', 'something', 'sometime', 'sometimes', 'somewhere', 'still', 'such', 'system', 'take', 'ten', 'than', 'that', 'the', 'the', 'their', 'them', 'themselves', 'then', 'thence', 'there', 'thereafter', 'thereby', 'therefore', 'therein', 'thereupon', 'these', 'they', 'thickv', 'thin', 'third', 'this', 'those', 'though', 'three', 'through', 'throughout', 'thru', 'thus', 'to', 'together', 'too', 'top', 'toward', 'towards', 'twelve', 'twenty', 'two', 'un', 'under', 'until', 'up', 'upon', 'us', 'very', 'via', 'was', 'we', 'well', 'were', 'what', 'whatever', 'when', 'whence', 'whenever', 'where', 'whereafter', 'whereas', 'whereby', 'wherein', 'whereupon', 'wherever', 'whether', 'which', 'while', 'whither', 'who', 'whoever', 'whole', 'whom', 'whose', 'why', 'will', 'with', 'within', 'without', 'would', 'yet', 'you', 'your', 'yours', 'yourself', 'yourselves']
+#319 stopwords
 #Problem to address-> global dictionary.
 def extract(filename):
     with open(filename) as f:
@@ -107,3 +113,66 @@ def print_result(link_list):
             if value not in final_list:
                 final_list.append(value)
     return final_list
+
+def clear_tags(file_handle):
+    h = html2text.HTML2Text()
+    file_content = h.handle(file_handle.read())
+    return file_content
+
+def collect_content(root,file_name):
+    
+    """ for removes the XML tags from file_name and returns content """
+
+    file_path = os.path.join(root, file_name)
+    current_file = open(file_path,"r")
+    file_content = clear_tags(current_file)
+    current_file.close()
+    return file_content
+
+def filter_valid_tokens(token_list):
+    reg_ex = """([-!$%^&*\(\)_+|~=`{}\[\]:";'<>?,.\/])+"""
+    valid_tokens = filter(lambda x: not re.match(reg_ex,x), tokens)
+    return valid_tokens
+
+def modify_word_frequency_per_document(valid_token_list,doc_no):
+    token_list = porter_stemmer(valid_token_list)
+
+    for token in token_list:
+        if not word_frequency.has_key(token):
+            word_frequency[token] = {doc_no:1}
+        else:
+            if not word_frequency[token].has_key(doc_no):
+                word_frequency[token][doc_no] = 1
+            else:
+                word_frequency[token][doc_no] += 1
+
+def dump_structure(structure,pickle_file):
+    file_handle = open(pickle_file,"wb")
+    pickle.dump(structure, file_handle, -1)
+    file_handle.close()
+
+def find_word(final_index,word): 
+    if final_index < 0 or final_index >= len(stopwords):
+        return -1
+
+    mid = final_index/2
+
+    if stopwords[mid] == word:
+        return mid
+    else if stopwords[mid] < word:
+        final_index = mid + 1
+        find_word(final_index, word)
+    else:
+        final_index = mid - 1
+        find_word(final_index, word)
+
+def is_stop_word(word):
+    if find_word(len(stopwords)-1, word) == -1:
+        return False
+    else:
+        return True
+
+def filter_out_stop_words(raw_tokens):
+    return filter(lambda x: not is_stop_word(x), raw_tokens)
+
+
