@@ -4,11 +4,12 @@ from llist import sllist, sllistnode
 from nltk.stem import PorterStemmer
 from nltk.tokenize import sent_tokenize, word_tokenize
 import nltk
-import re
+import re, math
 import html2text
 from operator import itemgetter
 import unicodedata
 import pickle
+import itertools
 
 index={}
 word_frequency = {}
@@ -201,3 +202,11 @@ def is_stop_word(word):
 
 def filter_out_stop_words(raw_tokens):
     return filter(lambda x: not is_stop_word(x), raw_tokens)
+
+def cosine_similarity(vector1, vector2):
+    sum = 0
+    val1 = sqrt(reduce(lambda x,y: x**2 + y**2, vector1))
+    val2 = sqrt(reduce(lambda x,y: x**2 + y**2, vector2))
+    for i, j in zip(vector1, vector2):
+        sum = sum + i * j
+    return float(sum)/float(val1)*float(val2)
